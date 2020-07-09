@@ -1,11 +1,10 @@
-package io.github
+package com
 
 import java.nio.charset.StandardCharsets
 
+package object pharmpress {
 
-package object mkotsur {
-
-  import java.io.{ByteArrayInputStream, UnsupportedEncodingException}
+  import java.io.{ ByteArrayInputStream, UnsupportedEncodingException }
 
   class StringInputStream @throws[UnsupportedEncodingException]
   (val string: String) extends ByteArrayInputStream(string.getBytes(StandardCharsets.UTF_8)) {

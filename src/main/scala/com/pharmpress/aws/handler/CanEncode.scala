@@ -1,6 +1,6 @@
-package io.github.mkotsur.aws.handler
+package com.pharmpress.aws.handler
 
-import io.github.mkotsur.aws.handler.Lambda.WriteStream
+import Lambda.WriteStream
 
 trait CanEncode[O] {
   def writeStream: WriteStream[O]

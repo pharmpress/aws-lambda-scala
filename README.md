@@ -8,8 +8,7 @@ Writing a handler for AWS lambda in Scala can be as easy as...
 
 ```scala
 import io.circe.generic.auto._
-import io.github.mkotsur.aws.handler.Lambda._
-import io.github.mkotsur.aws.handler.Lambda
+import com.pharmpress.aws.handler.Lambda._
 import com.amazonaws.services.lambda.runtime.Context
 
 case class Ping(inputMsg: String)
@@ -42,9 +41,10 @@ More docs are coming soon... Feel free to look at `src/test/scala` if you want t
 
 ```scala
 import io.circe.generic.auto._
-import io.github.mkotsur.aws.handler.Lambda._
-import io.github.mkotsur.aws.handler.Lambda
+import com.pharmpress.aws.handler.Lambda._
 import com.amazonaws.services.lambda.runtime.Context
+import com.pharmpress.aws.handler.Lambda
+
 import scala.concurrent.Future
 
 case class Ping(inputMsg: String)
@@ -63,8 +63,7 @@ This lambda will accept an empty string, or string with `null` as an input.
 
 ```scala
 import io.circe.generic.auto._
-import io.github.mkotsur.aws.handler.Lambda._
-import io.github.mkotsur.aws.handler.Lambda
+import com.pharmpress.aws.handler.Lambda._
 import com.amazonaws.services.lambda.runtime.Context
 
 class NothingToNothingHandler extends Lambda[None.type, None.type] {

@@ -1,15 +1,12 @@
-package io.github.mkotsur.aws.codecs
+package com.pharmpress.aws.codecs
 
 import java.nio.charset.StandardCharsets.UTF_8
 
-import io.circe.generic.auto._
+import com.pharmpress.aws.handler.{ CanDecode, CanEncode }
+import io.circe._
 import io.circe.parser.decode
 import io.circe.syntax._
-import io.circe._
-import io.github.mkotsur.aws.handler.{CanDecode, CanEncode}
-import cats.syntax.either.catsSyntaxEither
 
-import scala.io.Source
 import scala.reflect.ClassTag
 
 private[aws] trait AllCodec {
@@ -18,12 +15,11 @@ private[aws] trait AllCodec {
     CanDecode.instance[T](
       implicitly[ClassTag[T]] match {
         case ct if ct.runtimeClass == classOf[String] =>
-          is =>
-            Right(Source.fromInputStream(is).mkString.asInstanceOf[T])
+          str =>
+            Right(str.asInstanceOf[T])
         case _ =>
-          is =>
-            val string = Source.fromInputStream(is).mkString
-            decode[T](if (string.isEmpty) "null" else string)
+          str =>
+            decode[T](if (str.isEmpty) "null" else str)
       }
     )
 

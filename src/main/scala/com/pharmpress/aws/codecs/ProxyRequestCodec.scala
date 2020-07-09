@@ -1,13 +1,11 @@
-package io.github.mkotsur.aws.codecs
+package com.pharmpress.aws.codecs
 
-import java.io.ByteArrayInputStream
-import cats.syntax.either.catsSyntaxEither
+import com.pharmpress.aws.handler.CanDecode
+import com.pharmpress.aws.proxy.ProxyRequest
 import io.circe.generic.auto._
-import io.github.mkotsur.aws.handler.CanDecode
-import io.github.mkotsur.aws.proxy.ProxyRequest
 import shapeless.Generic
 
-import scala.language.{higherKinds, postfixOps}
+import scala.language.{ higherKinds, postfixOps }
 
 private[aws] trait ProxyRequestCodec extends AllCodec with FutureCodec {
 
@@ -20,7 +18,7 @@ private[aws] trait ProxyRequestCodec extends AllCodec with FutureCodec {
   implicit def canDecodeProxyRequest[T](implicit canDecode: CanDecode[T]) = CanDecode.instance[ProxyRequest[T]] { is =>
     {
       def extractBody(s: ProxyRequest[String]) = s.body match {
-        case Some(bodyString) => canDecode.readStream(new ByteArrayInputStream(bodyString.getBytes)).map(Option.apply)
+        case Some(bodyString) => canDecode.readString(bodyString).map(Option.apply)
         case None             => Right(None)
       }
 
@@ -29,7 +27,7 @@ private[aws] trait ProxyRequestCodec extends AllCodec with FutureCodec {
         Generic[ProxyRequest[T]].from((bodyOption :: reqList.reverse.tail).reverse)
       }
 
-      for (decodedRequest$String <- CanDecode[ProxyRequest[String]].readStream(is);
+      for (decodedRequest$String <- CanDecode[ProxyRequest[String]].readString(is);
            decodedBodyOption     <- extractBody(decodedRequest$String))
         yield produceProxyResponse(decodedRequest$String, decodedBodyOption)
     }

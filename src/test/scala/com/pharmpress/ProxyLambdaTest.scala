@@ -1,19 +1,20 @@
-package io.github.mkotsur
+package com.pharmpress
 
 import java.io.ByteArrayOutputStream
 
 import cats.syntax.either._
 import com.amazonaws.services.lambda.runtime.Context
+import com.pharmpress.LambdaTest.Ping
+import com.pharmpress.ProxyLambdaTest.{ ProxyCaseClassHandler, ProxyCaseClassHandlerWithError, ProxyRawHandler, ProxyRawHandlerWithError, _ }
+import com.pharmpress.aws.handler.Lambda
+import com.pharmpress.aws.handler.Lambda._
+import com.pharmpress.aws.proxy.{ ProxyRequest, ProxyResponse }
 import io.circe.generic.auto._
 import io.circe.parser._
-import io.github.mkotsur.ProxyLambdaTest._
-import io.github.mkotsur.aws.handler.Lambda
-import io.github.mkotsur.aws.handler.Lambda._
-import io.github.mkotsur.aws.proxy.{ProxyRequest, ProxyResponse}
-import org.scalatest.concurrent.Eventually
 import org.mockito.MockitoSugar
-import org.scalatest.matchers.should
+import org.scalatest.concurrent.Eventually
 import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.matchers.should
 
 import scala.concurrent.Future
 import scala.io.Source
@@ -129,8 +130,6 @@ class ProxyLambdaTest extends AnyFunSuite with should.Matchers with MockitoSugar
     val context = mock[Context]
     when(context.getRemainingTimeInMillis).thenReturn(500 /*ms*/ )
 
-    import Lambda.{canDecodeProxyRequest, canEncodeFuture, canEncodeProxyResponse}
-
     val function: (ProxyRequest[Ping], Context) => Either[Throwable, ProxyResponse[Future[Pong]]] =
       (_: ProxyRequest[Ping], _) => Right(ProxyResponse.success(Some(Future.successful(Pong("4")))))
     Lambda.Proxy.instance(function).handle(is, os, context)
@@ -151,8 +150,6 @@ class ProxyLambdaTest extends AnyFunSuite with should.Matchers with MockitoSugar
 
     val context = mock[Context]
     when(context.getRemainingTimeInMillis).thenReturn(500 /*ms*/ )
-
-    import Lambda.{canDecodeProxyRequest, canEncodeFuture, canEncodeProxyResponse}
 
     Lambda.Proxy
       .instance((_: ProxyRequest[Ping], _: Context) => {
@@ -181,8 +178,6 @@ class ProxyLambdaTest extends AnyFunSuite with should.Matchers with MockitoSugar
 
     val context = mock[Context]
     when(context.getRemainingTimeInMillis).thenReturn(500 /*ms*/ )
-
-    import Lambda.{canDecodeProxyRequest, canEncodeProxyResponse}
 
     Lambda.Proxy
       .instance[None.type, None.type]((_, _) => {

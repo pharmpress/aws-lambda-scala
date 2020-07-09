@@ -1,23 +1,23 @@
-package io.github.mkotsur
+package com.pharmpress
 
-import java.io.{ByteArrayOutputStream, InputStream, OutputStream}
+import java.io.{ ByteArrayOutputStream, InputStream, OutputStream }
 import java.util.concurrent.TimeoutException
 
 import ch.qos.logback.classic.Level
 import com.amazonaws.services.lambda.runtime.Context
+import com.pharmpress.LambdaTest.{ PingPong, _ }
+import com.pharmpress.aws.handler.Lambda
+import com.pharmpress.aws.handler.Lambda._
+import com.pharmpress.logback.TestAppender
 import io.circe.generic.auto._
-import io.github.mkotsur.LambdaTest._
-import io.github.mkotsur.aws.handler.Lambda
-import io.github.mkotsur.aws.handler.Lambda._
-import io.github.mkotsur.logback.TestAppender
+import org.mockito.MockitoSugar
 import org.scalatest._
 import org.scalatest.concurrent.Eventually
-import org.mockito.MockitoSugar
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should
 
 import scala.concurrent.Future
-import scala.util.{Failure, Success, Try}
+import scala.util.{ Failure, Success, Try }
 
 object LambdaTest {
 
@@ -115,21 +115,6 @@ class LambdaTest extends AnyFunSuite with should.Matchers with MockitoSugar with
     new PingString().handle(is, os, mock[Context])
 
     os.toString shouldBe "hello"
-  }
-
-  test("should log an error if it has been thrown in the handler") {
-    val is = new StringInputStream("""{ "inputMsg": "HeLLo" }""")
-    val os = new ByteArrayOutputStream()
-
-    val caught = intercept[Error] {
-      new PingPongThrowingAnError().handle(is, os, mock[Context])
-    }
-
-    caught.getMessage shouldEqual "PingPongThrowingAnError: Oops"
-
-    val loggingEvent = TestAppender.events.headOption.value
-    loggingEvent.getMessage should include("PingPongThrowingAnError: Oops")
-    loggingEvent.getLevel shouldBe Level.ERROR
   }
 
   test("should re-throw an error if the handler has returned Left") {

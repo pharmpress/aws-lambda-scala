@@ -1,17 +1,16 @@
-package io.github.mkotsur.aws.handler
+package com.pharmpress.aws.handler
 
-import java.io.{InputStream, OutputStream}
+import java.io.{ InputStream, OutputStream }
 
-import com.amazonaws.services.lambda.runtime.{Context, RequestStreamHandler}
-import io.circe.generic.auto._
-import io.github.mkotsur.aws.codecs._
-import io.github.mkotsur.aws.proxy.{ProxyRequest, ProxyResponse}
-import org.slf4j.LoggerFactory
-import cats.syntax.either.catsSyntaxEither
-import io.github.mkotsur.aws.handler.Lambda.HandleResult
+import com.amazonaws.services.lambda.runtime.{ Context, RequestStreamHandler }
+import Lambda.HandleResult
+import com.pharmpress.aws.codecs.{ AllCodec, ProxyRequestCodec }
+import com.pharmpress.aws.keepwarm.KeepWarmService
+import com.pharmpress.aws.proxy.{ ProxyRequest, ProxyResponse }
 
-import scala.language.{higherKinds, postfixOps}
-import scala.util.{Failure, Success, Try}
+import scala.io.Source
+import scala.language.{ higherKinds, postfixOps }
+import scala.util.{ Failure, Success, Try }
 
 object Lambda extends AllCodec with ProxyRequestCodec {
 
@@ -41,15 +40,14 @@ object Lambda extends AllCodec with ProxyRequestCodec {
       }
     }
 
-  type ReadStream[I]       = InputStream => Either[Throwable, I]
+  type ReadString[I]       = String => Either[Throwable, I]
   type ObjectHandler[I, O] = I => Either[Throwable, O]
   type WriteStream[O]      = (OutputStream, Either[Throwable, O], Context) => Either[Throwable, Unit]
 
-  private val logger = LoggerFactory.getLogger(getClass)
 
 }
 
-abstract class Lambda[I: CanDecode, O: CanEncode] extends RequestStreamHandler {
+abstract class Lambda[I: CanDecode, O: CanEncode] extends KeepWarmService with RequestStreamHandler {
 
   /**
     * Either of the following two methods should be overridden,
@@ -69,18 +67,26 @@ abstract class Lambda[I: CanDecode, O: CanEncode] extends RequestStreamHandler {
 
   // This function will ultimately be used as the external handler
   final def handleRequest(input: InputStream, output: OutputStream, context: Context): Unit = {
-    val read = implicitly[CanDecode[I]].readStream(input)
-    val handled = read.flatMap { input =>
-      Try(handle(input, context)) match {
-        case Success(v) => v
-        case Failure(e) =>
-          Lambda.logger.error(s"Error while executing lambda handler: ${e.getMessage}", e)
-          Left(e)
-      }
-    }
-    val written = implicitly[CanEncode[O]].writeStream(output, handled, context)
-    output.close()
-    written.left.foreach(e => throw e)
-  }
+    val inputString = Source.fromInputStream(input).mkString
 
+    val read: Either[Throwable, I] = implicitly[CanDecode[I]].readString(inputString)
+    read match {
+      case Right(input) =>
+        val handled = Try(handle(input, context)) match {
+          case Success(v) => v
+          case Failure(e) =>
+            Left(e)
+        }
+        val written = implicitly[CanEncode[O]].writeStream(output, handled, context)
+        output.close()
+        written.left.foreach(e => throw e)
+
+      case Left(e)  =>
+        // If we can't decode then we want to check if it was a keep warm message
+        keepWarm(inputString)
+        val written = implicitly[CanEncode[O]].writeStream(output, Left(e), context)
+        output.close()
+        written.left.foreach(e => throw e)
+    }
+  }
 }
