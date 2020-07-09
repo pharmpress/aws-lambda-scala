@@ -32,10 +32,29 @@ package object proxy {
   )
 
   object ProxyResponse {
+    private val headers = Some(Map("Access-Control-Allow-Origin" -> "*"))
 
     def success[B](body: Option[B] = None): ProxyResponse[B] = ProxyResponse[B](
       statusCode = 200,
       headers = Some(Map("Access-Control-Allow-Origin" -> "*")),
+      body = body
+    )
+
+    def created[B](body: Option[B] = None): ProxyResponse[B] = ProxyResponse[B](
+      statusCode = 201,
+      headers = headers,
+      body = body
+    )
+
+    def badRequest[B](body: Option[B] = None): ProxyResponse[B] = ProxyResponse[B](
+      statusCode = 400,
+      headers = headers,
+      body = body
+    )
+
+    def unauthorized[B](body: Option[B] = None): ProxyResponse[B] = ProxyResponse[B](
+      statusCode = 401,
+      headers = headers,
       body = body
     )
   }
