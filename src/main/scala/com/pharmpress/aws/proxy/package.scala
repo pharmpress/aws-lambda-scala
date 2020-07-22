@@ -57,6 +57,24 @@ package object proxy {
       headers = headers,
       body = body
     )
+
+    def forbidden[B](body: Option[B] = None): ProxyResponse[B] = ProxyResponse[B](
+      statusCode = 403,
+      headers = headers,
+      body = body
+    )
+
+    def notFound[B](body: Option[B] = None): ProxyResponse[B] = ProxyResponse[B](
+      statusCode = 404,
+      headers = headers,
+      body = body
+    )
+
+    def methodNotAllowed[B](body: Option[B] = None): ProxyResponse[B] = ProxyResponse[B](
+      statusCode = 405,
+      headers = headers,
+      body = body
+    )
   }
 
 }
