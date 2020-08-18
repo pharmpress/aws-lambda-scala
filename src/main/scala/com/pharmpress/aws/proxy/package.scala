@@ -4,7 +4,8 @@ package object proxy {
 
   case class RequestContextAuthorizer(
     principalId: String,
-    user: String,
+    username: String,
+    email: String,
     roles: String
   )
 
