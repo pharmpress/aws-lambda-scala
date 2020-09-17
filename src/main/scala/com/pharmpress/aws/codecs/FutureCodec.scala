@@ -4,8 +4,11 @@ import java.io.ByteArrayOutputStream
 import java.nio.charset.Charset
 
 import com.pharmpress.aws.handler.CanEncode
-import com.pharmpress.aws.proxy.ProxyResponse
-import io.circe.Encoder
+import com.pharmpress.aws.proxy.{ ProxyResponse, Response }
+import io.circe.{ Encoder, Json, _ }
+import io.circe.generic.auto._
+import io.circe.syntax._
+import io.circe.{Decoder, Encoder}
 import io.circe.generic.auto._
 import io.circe.syntax._
 
@@ -13,6 +16,9 @@ import scala.concurrent.{ Await, Future }
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{ Failure, Success, Try }
+import io.circe.parser.decode
+import io.circe.syntax._
+
 
 private[aws] trait FutureCodec {
   implicit def canEncodeFuture[I: Encoder](implicit canEncode: Encoder[I]) =
@@ -30,27 +36,43 @@ private[aws] trait FutureCodec {
       }
     })
 
-  implicit def canEncodeProxyResponse[T](implicit canEncode: CanEncode[T]) = CanEncode.instance[ProxyResponse[T]](
-    (output, proxyResponseEither, ctx) => {
+  implicit def canEncodeProxyResponse[T](implicit canEncode: CanEncode[T]): CanEncode[ProxyResponse[T]] = CanEncode.instance[ProxyResponse[T]](
+    func = (output, proxyResponseEither, ctx) => {
 
-      def writeBody(bodyOption: Option[T]): Either[Throwable, Option[String]] =
-        bodyOption match {
-          case None => Right(None)
-          case Some(body) =>
-            val os     = new ByteArrayOutputStream()
-            val result = canEncode.writeStream(os, Right(body), ctx)
+      def writeBody(body: Response[T])(implicit encoder: Encoder[Response[T]]): Either[Throwable, (Option[String], Option[String])] = {
+        val successOpt: Either[Throwable, Option[String]] = body.success match {
+          case None => Right[Throwable, Option[String]](None)
+          case Some(success) =>
+            val os = new ByteArrayOutputStream()
+            val result: Either[Throwable, Unit] = canEncode.writeStream(os, Right(success), ctx)
             os.close()
             result.map(_ => Some(os.toString()))
         }
 
-      val proxyResposeOrError = for {
+        for {
+          success <- successOpt
+        } yield {
+          (success, body.error)
+        }
+      }
+
+      implicit def encoderProxyResponseHandler: Encoder[Response[T]] =
+        (metadata: Response[T]) =>
+          metadata.error match {
+            case Some(response: String) =>
+              Json.obj(("error", Json.fromString(response)))
+            case None =>
+              metadata.success.asJson
+          }
+
+      val proxyResposeOrError: Either[Throwable, ProxyResponse[String]] = for {
         proxyResponse <- proxyResponseEither
-        bodyOption    <- writeBody(proxyResponse.body)
+        tuple <- writeBody(proxyResponse.body)
       } yield
         ProxyResponse[String](
           proxyResponse.statusCode,
           proxyResponse.headers,
-          bodyOption
+          Response[String](tuple._1, tuple._2)
         )
 
       val response = proxyResposeOrError match {
@@ -60,9 +82,10 @@ private[aws] trait FutureCodec {
           ProxyResponse[String](
             500,
             Some(Map("Content-Type" -> s"text/plain; charset=${Charset.defaultCharset().name()}")),
-            Some(e.getMessage)
+            Response(error = Some(e.getMessage))
           )
       }
+
 
       output.write(response.asJson.noSpaces.getBytes)
 

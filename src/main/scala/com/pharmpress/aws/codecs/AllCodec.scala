@@ -3,6 +3,7 @@ package com.pharmpress.aws.codecs
 import java.nio.charset.StandardCharsets.UTF_8
 
 import com.pharmpress.aws.handler.{ CanDecode, CanEncode }
+import com.pharmpress.aws.proxy.Response
 import io.circe._
 import io.circe.parser.decode
 import io.circe.syntax._
@@ -30,6 +31,7 @@ private[aws] trait AllCodec {
           handledEither.map { s =>
             output.write(s.asInstanceOf[String].getBytes)
           }
+
       case _ =>
         (output, handledEither, _) =>
           handledEither map { handled =>
@@ -38,4 +40,13 @@ private[aws] trait AllCodec {
           }
     }
   )
+
+  implicit def encoderProxyResponseHandler[T: Encoder]: Encoder[Response[T]] =
+    (metadata: Response[T]) =>
+      metadata.error match {
+        case Some(response: String) =>
+          Json.obj(("error", Json.fromString(response)))
+        case None =>
+          metadata.success.asJson
+      }
 }

@@ -1,5 +1,8 @@
 package com.pharmpress.aws
 
+import io.circe.syntax.EncoderOps
+import io.circe.{ Encoder, Json }
+
 package object proxy {
 
   case class RequestContextAuthorizer(
@@ -29,52 +32,63 @@ package object proxy {
   case class ProxyResponse[T](
     statusCode: Int,
     headers: Option[Map[String, String]] = None,
-    body: Option[T] = None
+    body: Response[T] = Response(None, None)
   )
+
+  case class Response[T](success: Option[T] = None, error: Option[String] = None)
+
+  implicit def encoderProxyResponseHandler[T: Encoder]: Encoder[Response[T]] =
+    (metadata: Response[T]) =>
+      metadata.error match {
+        case Some(response) =>
+          Json.obj(("error", Json.fromString(response)))
+        case None =>
+          metadata.success.asJson
+      }
 
   object ProxyResponse {
     private val headers = Some(Map("Access-Control-Allow-Origin" -> "*"))
 
     def success[B](body: Option[B] = None): ProxyResponse[B] = ProxyResponse[B](
       statusCode = 200,
-      headers = Some(Map("Access-Control-Allow-Origin" -> "*")),
-      body = body
+      headers = headers,
+      body = Response(success = body)
     )
 
     def created[B](body: Option[B] = None): ProxyResponse[B] = ProxyResponse[B](
       statusCode = 201,
       headers = headers,
-      body = body
+      body = Response(success = body)
     )
 
-    def badRequest[B](body: Option[B] = None): ProxyResponse[B] = ProxyResponse[B](
+    def badRequest[B](err: Option[String] = None): ProxyResponse[B] = ProxyResponse[B](
       statusCode = 400,
       headers = headers,
-      body = body
+      body = Response(error = err)
     )
 
-    def unauthorized[B](body: Option[B] = None): ProxyResponse[B] = ProxyResponse[B](
+    def unauthorized[B](err: Option[String] = None): ProxyResponse[B] = ProxyResponse[B](
       statusCode = 401,
       headers = headers,
-      body = body
+      body = Response(error = err)
     )
 
-    def forbidden[B](body: Option[B] = None): ProxyResponse[B] = ProxyResponse[B](
+    def forbidden[B](err: Option[String] = None): ProxyResponse[B] = ProxyResponse[B](
       statusCode = 403,
       headers = headers,
-      body = body
+      body = Response(error = err)
     )
 
-    def notFound[B](body: Option[B] = None): ProxyResponse[B] = ProxyResponse[B](
+    def notFound[B](err: Option[String] = None): ProxyResponse[B] = ProxyResponse[B](
       statusCode = 404,
       headers = headers,
-      body = body
+      body = Response(error = err)
     )
 
-    def methodNotAllowed[B](body: Option[B] = None): ProxyResponse[B] = ProxyResponse[B](
+    def methodNotAllowed[B](err: Option[String] = None): ProxyResponse[B] = ProxyResponse[B](
       statusCode = 405,
       headers = headers,
-      body = body
+      body = Response(error = err)
     )
   }
 

@@ -7,8 +7,8 @@ import com.amazonaws.services.lambda.runtime.Context
 import com.pharmpress.LambdaTest.Ping
 import com.pharmpress.ProxyLambdaTest.{ ProxyCaseClassHandler, ProxyCaseClassHandlerWithError, ProxyRawHandler, ProxyRawHandlerWithError, _ }
 import com.pharmpress.aws.handler.Lambda
+import com.pharmpress.aws.proxy.{ Response, ProxyRequest, ProxyResponse }
 import com.pharmpress.aws.handler.Lambda._
-import com.pharmpress.aws.proxy.{ ProxyRequest, ProxyResponse }
 import io.circe.generic.auto._
 import io.circe.parser._
 import org.mockito.MockitoSugar
@@ -23,7 +23,7 @@ object ProxyLambdaTest {
 
   class ProxyRawHandler extends Lambda.Proxy[String, String] {
     override protected def handle(input: ProxyRequest[String]) =
-      Right(ProxyResponse(200, None, input.body.map(_.toUpperCase())))
+      Right(ProxyResponse(200, None, Response(success = input.body.map(_.toUpperCase()))))
   }
 
   class ProxyRawHandlerWithError extends Lambda.Proxy[String, String] {
@@ -34,11 +34,15 @@ object ProxyLambdaTest {
   }
 
   class ProxyCaseClassHandler extends Lambda.Proxy[Ping, Pong] {
-    override protected def handle(input: ProxyRequest[Ping]) = Right(
-      ProxyResponse(200, None, input.body.map { ping =>
+    override protected def handle(input: ProxyRequest[Ping]) = {
+      val result: Option[Pong] = input.body.map { ping =>
         Pong(ping.inputMsg.length.toString)
-      })
-    )
+      }
+
+      Right(
+        ProxyResponse(200, None, Response(success = result)
+        ))
+    }
   }
 
   class ProxyCaseClassHandlerWithError extends Lambda.Proxy[Ping, Pong] {
@@ -97,7 +101,7 @@ class ProxyLambdaTest extends AnyFunSuite with should.Matchers with MockitoSugar
       ProxyResponse(
         500,
         Some(Map("Content-Type" -> s"text/plain; charset=UTF-8")),
-        Some("Could not handle this request for some obscure reasons")
+        Response(error = Some("Could not handle this request for some obscure reasons"))
       ))
   }
 
@@ -116,7 +120,7 @@ class ProxyLambdaTest extends AnyFunSuite with should.Matchers with MockitoSugar
       ProxyResponse(
         500,
         Some(Map("Content-Type" -> s"text/plain; charset=UTF-8")),
-        Some("Oh boy, something went wrong...")
+        Response(error = Some("Oh boy, something went wrong..."))
       ))
   }
 
@@ -164,7 +168,7 @@ class ProxyLambdaTest extends AnyFunSuite with should.Matchers with MockitoSugar
         ProxyResponse(
           500,
           Some(Map("Content-Type" -> s"text/plain; charset=UTF-8")),
-          Some("Oops")
+          Response(error = Some("Oops"))
         ))
     }
   }
@@ -183,7 +187,7 @@ class ProxyLambdaTest extends AnyFunSuite with should.Matchers with MockitoSugar
       .instance[None.type, None.type]((_, _) => {
         val response = ProxyResponse[None.type](
           statusCode = 200,
-          body = None
+          body = Response[None.type]()
         )
         Either.right(response)
       })
@@ -194,7 +198,7 @@ class ProxyLambdaTest extends AnyFunSuite with should.Matchers with MockitoSugar
       response shouldEqual Either.right(
         ProxyResponse(
           statusCode = 200,
-          body = None
+          body = Response[None.type]()
         ))
     }
   }
