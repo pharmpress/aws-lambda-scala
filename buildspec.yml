@@ -1,0 +1,15 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      java: corretto8
+  pre_build:
+    commands:
+      - aws --version
+      - export CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token --domain pharmpress --domain-owner 506600287196 --query authorizationToken --output text)
+  build:
+    commands:
+      - sbt clean test compile publish
+
+
