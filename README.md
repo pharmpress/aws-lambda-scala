@@ -27,7 +27,7 @@ Features:
 * [AWS API Gateway proxy integration](http://docs.aws.amazon.com/apigateway/latest/developerguide/integrating-api-with-aws-services-lambda.html);
 * Uncaught errors are logged with SLF4J and re-thrown.
 
-More docs are coming soon... Feel free to look at `src/test/scala` if you want to use it right now.
+More docs are coming soon... Feel free to look at `src/test/scala` if you want to use it right now
 
 ## Examples
 
